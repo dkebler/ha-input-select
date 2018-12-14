@@ -1,0 +1,102 @@
+#Initial code and concept Bob_NL https://community.home-assistant.io/t/chromecast-radio-with-station-and-player-selection/12732/1
+#Converted into a package by wills106 https://community.home-assistant.io/t/chromecast-radio-with-station-and-player-selection/12732/419
+group:
+  Radio:
+    name: ChromeCast Radio
+    icon: mdi:radio
+    entities:
+    - input_select.chromecast_radio_station
+    - input_text.custom_station
+    - input_select.chromecast_radio_speakers
+    - input_number.volume_radio
+    - script.play_chromecast_radio
+    - script.stop_chromecast_radio
+
+input_select:
+
+  chromecast_radio_station:
+    name: 'Select Radio Station'
+    icon: mdi:radio
+    options:
+      - Absolute Radio Classic Rock
+      - RealXS Manchester
+      - Custom Station
+    values:
+      - http://network.absoluteradio.co.uk/core/audio/mp3/live.pls?service=vc
+      - http://media-ice.musicradio.com/RealXSManchesterMP3
+      - http://custom
+
+  chromecast_radio_speakers:
+    name: 'Select Speakers'
+    icon: mdi:speaker-wireless
+    options:
+      - LivingRoom
+      - Bedroom
+      - TV
+      - All
+    values:
+      - media_player.living_room_speaker
+      - media_player.bedroom_speaker
+      - media_player.chromecast0899
+      - media_player.home_group
+    initial: LivingRoom
+
+input_text:
+  custom_station:
+    name: Radio URL
+    icon: mdi:link-variant
+
+input_number:
+  volume_radio:
+    name: Volume
+    icon: mdi:volume-high
+    initial: 0.3
+    min: 0
+    max: 1
+    step: 0.05
+
+sensor:
+  - platform: template
+    sensors:
+      chromecast_radio_station:
+        entity_id: input_select.chromecast_radio_station
+        friendly_name: chromecast Radio Station
+        value_template: >
+          {% for option in state_attr("input_select.chromecast_radio_station", "options") -%}
+            {% if is_state("input_select.chromecast_radio_station", option) -%}
+              {{ state_attr("input_select.chromecast_radio_station", 'values')[loop.index - 1] }}
+            {%- endif %}
+          {%- endfor %}
+
+  - platform: template
+    sensors:
+      chromecast_radio_speakers:
+        entity_id: input_select.chromecast_radio_speakers
+        friendly_name: chromecast Radio Station
+        value_template: >
+          {% for option in state_attr("input_select.chromecast_radio_speakers", "options")  -%}
+            {% if is_state("input_select.chromecast_radio_speakers", option) -%}
+              {{ state_attr("input_select.chromecast_radio_speakers", 'values')[loop.index - 1] }}
+            {%- endif %}
+          {%- endfor %}
+
+script:
+  play_chromecast_radio:
+    alias: Cast Selected Radio on Chromecast Speakers
+    sequence:
+      - service: media_player.volume_set
+        data_template:
+          entity_id: sensor.chromecast_radio_speakers
+          volume_level: '{{ states.input_number.volume_radio.state }}'
+      - service: media_player.play_media
+        data_template:
+          entity_id: sensor.chromecast_radio_speakers
+          media_content_id: sensor.chromecast_radio_station
+          media_content_type: 'audio/mp4'
+
+  stop_chromecast_radio:
+    alias: Stop Playing Radio on ChromeCast
+    sequence:
+      - service: media_player.turn_off
+        data_template:
+          entity_id: sensor.chromecast_radio_speakers
